@@ -1,0 +1,19 @@
+{
+  "name": "blacksmith-cli",
+  "version": "0.1.0",
+  "description": "CLI for blacksmith.sh's dashboard API (cookie auth, HAR-derived commands)",
+  "type": "module",
+  "bin": {
+    "bs": "./src/cli.ts"
+  },
+  "scripts": {
+    "build": "bun build ./src/cli.ts --compile --outfile bs",
+    "build:all": "bun run scripts/build-all.ts",
+    "codegen": "bun run src/codegen/fromHar.ts",
+    "start": "bun run src/cli.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  }
+}
