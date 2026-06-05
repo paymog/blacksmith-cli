@@ -1,0 +1,120 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build binaries
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          bun install --frozen-lockfile
+          mkdir -p dist
+          # bun-target -> released asset name
+          declare -A targets=(
+            [bun-darwin-arm64]=bs-darwin-arm64
+            [bun-darwin-x64]=bs-darwin-x64
+            [bun-linux-arm64]=bs-linux-arm64
+            [bun-linux-x64]=bs-linux-x64
+          )
+          for target in "${!targets[@]}"; do
+            out="dist/${targets[$target]}"
+            bun build ./src/cli.ts --compile --target="$target" --outfile "$out"
+          done
+          cd dist
+          shasum -a 256 bs-* > checksums.txt
+          cat checksums.txt
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" dist/bs-* dist/checksums.txt \
+            --title "$TAG" --generate-notes
+
+      - name: Update Homebrew tap
+        env:
+          DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          base="https://github.com/paymog/blacksmith-cli/releases/download/$TAG"
+
+          sha() { awk -v f="$1" '$2==f {print $1}' dist/checksums.txt; }
+          darwin_arm="$(sha bs-darwin-arm64)"
+          darwin_x64="$(sha bs-darwin-x64)"
+          linux_arm="$(sha bs-linux-arm64)"
+          linux_x64="$(sha bs-linux-x64)"
+
+          tap_dir="$(mktemp -d)/homebrew-tap"
+          key_file="$(mktemp)"
+          printf '%s\n' "$DEPLOY_KEY" > "$key_file"
+          chmod 600 "$key_file"
+          export GIT_SSH_COMMAND="ssh -i $key_file -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+
+          git clone git@github.com:paymog/homebrew-tap.git "$tap_dir"
+          mkdir -p "$tap_dir/Formula"
+          cat > "$tap_dir/Formula/blacksmith.rb" <<EOF
+          class Blacksmith < Formula
+            desc "CLI for blacksmith.sh's dashboard backend (cookie auth, HAR-derived commands)"
+            homepage "https://github.com/paymog/blacksmith-cli"
+            version "$version"
+
+            on_macos do
+              on_arm do
+                url "$base/bs-darwin-arm64"
+                sha256 "$darwin_arm"
+              end
+              on_intel do
+                url "$base/bs-darwin-x64"
+                sha256 "$darwin_x64"
+              end
+            end
+
+            on_linux do
+              on_arm do
+                url "$base/bs-linux-arm64"
+                sha256 "$linux_arm"
+              end
+              on_intel do
+                url "$base/bs-linux-x64"
+                sha256 "$linux_x64"
+              end
+            end
+
+            def install
+              bin.install Dir["bs-*"].first => "bs"
+            end
+
+            test do
+              assert_match version.to_s, shell_output("#{bin}/bs --version")
+            end
+          end
+          EOF
+
+          cd "$tap_dir"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/blacksmith.rb
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: update blacksmith to $TAG"
+          git push

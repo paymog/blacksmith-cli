@@ -10,7 +10,19 @@ authenticated with session cookies you import from your browser. Commands are
 
 ## Install
 
-Requires [Bun](https://bun.sh).
+**Homebrew** (no Bun required — installs a prebuilt binary):
+
+```sh
+brew install paymog/tap/blacksmith   # provides the `bs` command
+```
+
+**Bun** (if you have [Bun](https://bun.sh) — installs straight from GitHub):
+
+```sh
+bun install -g github:paymog/blacksmith-cli
+```
+
+**From source:**
 
 ```sh
 bun install
@@ -91,6 +103,37 @@ bun run codegen ~/Downloads/app.blacksmith.sh.har
 The generator (`src/codegen/fromHar.ts`) scans `dashboardbackend.blacksmith.sh` requests,
 templates path params (`:org`, `:repo`, `:run_id`, `:job_id`, …), and records observed query
 keys for `bs list`.
+
+## Claude Code skill
+
+This repo ships a [Claude Code](https://claude.com/claude-code) skill that teaches the agent
+to drive `bs` (cookie auth, org resolution, the command surface, and recipes). It lives in
+[`skills/blacksmith-cli`](skills/blacksmith-cli).
+
+Install with [`npx skills`](https://github.com/vercel-labs/skills):
+
+```sh
+npx skills add paymog/blacksmith-cli            # into ./.claude/skills/
+npx skills add paymog/blacksmith-cli --global --yes
+```
+
+Or manually:
+
+```sh
+git clone https://github.com/paymog/blacksmith-cli
+cp -r blacksmith-cli/skills/blacksmith-cli ~/.claude/skills/blacksmith-cli
+```
+
+## Release
+
+Tag-driven. On a `v*` tag, GitHub Actions compiles the four binaries, attaches them to a
+GitHub Release, and updates the `blacksmith` formula in `paymog/homebrew-tap` (binary
+download, no build deps). The tap push uses the `HOMEBREW_TAP_DEPLOY_KEY` secret.
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
 
 ## Shape
 

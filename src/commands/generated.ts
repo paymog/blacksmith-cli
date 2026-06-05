@@ -5,21 +5,6 @@ import type { Command } from "./types.ts";
 export const commands: Command[] = [
   {
     "name": [
-      "api",
-      "user",
-      "github",
-      "orgs",
-      "create"
-    ],
-    "method": "POST",
-    "path": "/api/user/github/orgs",
-    "pathParams": [],
-    "query": [],
-    "bodyContentType": "application/json",
-    "description": "POST /api/user/github/orgs"
-  },
-  {
-    "name": [
       "assistant",
       "sessions"
     ],
@@ -1036,6 +1021,18 @@ export const commands: Command[] = [
       "limit"
     ],
     "description": "GET /api/user/github/orgs/:org/monitoring/rules"
+  },
+  {
+    "name": [
+      "orgs",
+      "create"
+    ],
+    "method": "POST",
+    "path": "/api/user/github/orgs",
+    "pathParams": [],
+    "query": [],
+    "bodyContentType": "application/json",
+    "description": "POST /api/user/github/orgs"
   },
   {
     "name": [

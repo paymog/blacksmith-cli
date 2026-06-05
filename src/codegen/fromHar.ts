@@ -81,7 +81,13 @@ function commandName(templatedPath: string, method: string): string[] {
   const trailingParam = rest.length > 0 && rest[rest.length - 1]!.startsWith(":");
   // Name tokens = the non-param segments.
   const tokens = rest.filter((s) => !s.startsWith(":"));
-  if (tokens.length === 0) tokens.push(...segs.filter((s) => !s.startsWith(":")));
+  // All segments were boilerplate/params (e.g. POST /api/user/github/orgs):
+  // fall back to the last literal segment so the name isn't the whole path.
+  if (tokens.length === 0) {
+    const literals = segs.filter((s) => !s.startsWith(":"));
+    const last = literals[literals.length - 1];
+    if (last) tokens.push(last);
+  }
   const verb = verbFor(method);
   if (verb) tokens.push(verb);
   else if (trailingParam) tokens.push("get");
