@@ -48,7 +48,8 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           gh release create "$TAG" dist/bs-* dist/checksums.txt \
-            --title "$TAG" --generate-notes
+            --title "$TAG" --generate-notes \
+            || gh release upload "$TAG" dist/bs-* dist/checksums.txt --clobber
 
       - name: Update Homebrew tap
         env:
